@@ -39,10 +39,7 @@ fi
 source "$HOME/.cargo/env"
 
 echo "==> Installing Rust targets"
-rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl x86_64-pc-windows-msvc aarch64-pc-windows-msvc
-
-echo "==> Installing musl tools for static linux binaries"
-sudo apt-get install -y musl-tools
+rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-pc-windows-msvc aarch64-pc-windows-msvc
 
 echo "==> Installing cross (for linux arm64)"
 cargo install cross --locked || true
@@ -66,11 +63,11 @@ fi
 
 cd "$WORKDIR/codex-rs"
 
-echo "==> Building linux-x64 (native musl)"
-cargo build --release --target x86_64-unknown-linux-musl -p codex-cli
+echo "==> Building linux-x64 (native gnu)"
+cargo build --release --target x86_64-unknown-linux-gnu -p codex-cli
 
 echo "==> Building linux-arm64 (cross)"
-cross build --release --target aarch64-unknown-linux-musl -p codex-cli
+cross build --release --target aarch64-unknown-linux-gnu -p codex-cli
 
 echo "==> Building win32-x64 (cargo-xwin)"
 cargo xwin build --release --target x86_64-pc-windows-msvc -p codex-cli
@@ -82,8 +79,8 @@ cd "$WORKDIR"
 
 echo "==> Staging binaries into packages/"
 declare -A BIN_MAP=(
-  [linux-x64]=x86_64-unknown-linux-musl/release/OZARNIK
-  [linux-arm64]=aarch64-unknown-linux-musl/release/OZARNIK
+  [linux-x64]=x86_64-unknown-linux-gnu/release/OZARNIK
+  [linux-arm64]=aarch64-unknown-linux-gnu/release/OZARNIK
   [win32-x64]=x86_64-pc-windows-msvc/release/OZARNIK.exe
   [win32-arm64]=aarch64-pc-windows-msvc/release/OZARNIK.exe
 )
