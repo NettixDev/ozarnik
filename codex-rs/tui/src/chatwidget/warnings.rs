@@ -11,8 +11,14 @@ pub(super) struct WarningDisplayState {
 
 impl WarningDisplayState {
     pub(super) fn should_display(&mut self, message: &str) -> bool {
-        fallback_model_metadata_warning_slug(message)
-            .is_none_or(|slug| self.fallback_model_metadata_slugs.insert(slug.to_string()))
+        // SQAgent/ОЗАРНИК: suppress the fallback-model-metadata warning entirely.
+        // OnlySQ models are fetched live and never appear in the (now-empty) bundled
+        // catalog, so this warning would fire on every turn and is just noise.
+        if let Some(slug) = fallback_model_metadata_warning_slug(message) {
+            let _ = self.fallback_model_metadata_slugs.insert(slug.to_string());
+            return false;
+        }
+        true
     }
 }
 
