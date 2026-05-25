@@ -259,7 +259,10 @@ impl AppServerSession {
                     .map(|model| model.model.clone())
             })
             .or_else(|| available_models.first().map(|model| model.model.clone()))
-            .wrap_err("model/list returned no models for TUI bootstrap")?;
+            // SQAgent/ОЗАРНИК: with bundled model catalog stripped, available_models can be
+            // empty at bootstrap. Fall back to a placeholder slug so TUI starts; the user can
+            // switch to a real OnlySQ model via /model (which fetches live).
+            .unwrap_or_else(|| "gpt-5.5".to_string());
         self.default_model = Some(default_model.clone());
         self.available_models = available_models.clone();
 
