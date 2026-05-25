@@ -641,17 +641,48 @@ pub(crate) async fn stream_chat_completions(
         }
         drop(fb_map);
 
-        let end_turn = finish_reason
-            .as_deref()
-            .map(|fr| matches!(fr, "stop" | "length" | "content_filter"));
-        let _ = tx
-            .send(Ok(ResponseEvent::Completed {
-                response_id: response_id.unwrap_or_default(),
-                token_usage,
-                end_turn,
-            }))
-            .await;
-        let _ = done;
+        // Map OnlySQ/chat-completions finish_reason to codex's end_turn semantics.
+        //   "stop"          -> turn ended naturally.
+        //   "content_filter" -> turn ended (filter triggered).
+        //   "tool_calls"    -> turn NOT ended; codex needs to dispatch the tool and continue.
+        //   "length"        -> turn NOT ended; max_tokens hit mid-response, give the agent
+        //                       another chance to keep going on the next request.
+        //   null/unknown    -> stream was cut short. Surface a stream error so codex retries
+        //                       instead of silently truncating and giving up.
+        match finish_reason.as_deref() {
+            None => {
+                if !done {
+                    let _ = tx
+                        .send(Err(CodexErr::Stream(
+                            "chat-completions stream ended without finish_reason or [DONE]".to_string(),
+                            None,
+                        )))
+                        .await;
+                    return;
+                }
+                let _ = tx
+                    .send(Ok(ResponseEvent::Completed {
+                        response_id: response_id.unwrap_or_default(),
+                        token_usage,
+                        end_turn: None,
+                    }))
+                    .await;
+            }
+            Some(fr) => {
+                let end_turn = match fr {
+                    "stop" | "content_filter" => Some(true),
+                    "tool_calls" | "length" => Some(false),
+                    _ => None,
+                };
+                let _ = tx
+                    .send(Ok(ResponseEvent::Completed {
+                        response_id: response_id.unwrap_or_default(),
+                        token_usage,
+                        end_turn,
+                    }))
+                    .await;
+            }
+        }
     });
 
     Ok(ResponseStream {
