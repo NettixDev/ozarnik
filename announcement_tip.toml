@@ -1,0 +1,7 @@
+# OZARNIK announcement tips.
+# Each [[announcements]] entry is evaluated in order; the last matching one is shown.
+# Dates are UTC, formatted as YYYY-MM-DD. The from_date is inclusive and the to_date is exclusive.
+# version_regex matches against the CLI version (env!("CARGO_PKG_VERSION")); omit to apply to all versions.
+
+[[announcements]]
+content = "Чтобы работать — запустите OZARNIK из командной строки в папке проекта. Чтобы ОЗАРНИК не спрашивал подтверждений при правках — выберите /permissions full."

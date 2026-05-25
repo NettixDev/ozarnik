@@ -1,0 +1,22 @@
+{
+  "name": "@ozarnik/cli",
+  "version": "0.1.0",
+  "description": "ОЗАРНИК — OnlySQ-backed coding agent CLI/TUI",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "ozarnik": "bin/ozarnik.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "optionalDependencies": {
+    "@ozarnik/cli-linux-x64": "0.1.0",
+    "@ozarnik/cli-linux-arm64": "0.1.0",
+    "@ozarnik/cli-win32-x64": "0.1.0",
+    "@ozarnik/cli-win32-arm64": "0.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

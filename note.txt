@@ -1,0 +1,97 @@
+[23.05.2026 23:12] justi: Проблема была в том что OnlySq в streaming режиме возвращает tool_calls с пустыми аргументами:
+
+{"tool_calls": [{"function": {"name": "bash", "arguments": "{}"}}]}
+А реальные аргументы ({"command": "ls /root"}) приходят только в non-streaming ответе.
+
+Что мы сделали:
+
+1. В openai_compat.py добавили словарь _fallback_tool_args = {}
+
+2. После создания streaming соединения делаем параллельный non-streaming запрос и сохраняем аргументы:
+_nb_resp = await self._client.chat.completions.create(..., stream=False)
+_fallback_tool_args[tc.function.name] = tc.function.arguments
+3. При обработке streaming tool_call — если arguments пустые, берём из fallback:
+if not _args or _args.strip() in ("{}", ""):
+    _args = _fallback_tool_args.get(tc.function.name, "{}")
+По сути каждый запрос теперь делается дважды — streaming для Claude Code и non-streaming для получения реальных аргументов. Поэтому RPM расходуется в 2 раза быстрее.
+[23.05.2026 23:13] justi: Вот все правки по порядку:
+
+**1. Фикс NoneType < int (tc_index)**
+python3 - << 'EOF'
+path = "/root/.local/share/uv/tools/free-claude-code/lib/python3.14/site-packages/providers/openai_compat.py"
+with open(path) as f:
+    content = f.read()
+old = '        tc_index = tc.get("index", 0)\n        if tc_index < 0:'
+new = '        tc_index = tc.get("index", 0) or 0\n        if tc_index < 0:'
+content = content.replace(old, new)
+with open(path, 'w') as f:
+    f.write(content)
+print("Done")
+EOF
+**2. Добавляем _fallback_tool_args словарь**
+python3 - << 'EOF'
+path = "/root/.local/share/uv/tools/free-claude-code/lib/python3.14/site-packages/providers/openai_compat.py"
+with open(path) as f:
+    content = f.read()
+old = '        tool_argument_aliases: dict[str, dict[str, str]] = {}\n        tool_argument_alias_buffers: dict[int, str] = {}'
+new = '        tool_argument_aliases: dict[str, dict[str, str]] = {}\n        tool_argument_alias_buffers: dict[int, str] = {}\n        _fallback_tool_args: dict[str, str] = {}'
+content = content.replace(old, new)
+with open(path, 'w') as f:
+    f.write(content)
+print("Done")
+EOF
+**3. Non-streaming fallback запрос**
+python3 - << 'EOF'
+path = "/root/.local/share/uv/tools/free-claude-code/lib/python3.14/site-packages/providers/openai_compat.py"
+with open(path) as f:
+    content = f.read()
+old = '                stream, body = await self._create_stream(body)\n                tool_argument_aliases = self._tool_argument_aliases(body)'
+new = '''                stream, body = await self._create_stream(body)
+                tool_argument_aliases = self._tool_argument_aliases(body)
+                try:
+                    _nb_body = {**body, "stream": False}
+                    _nb_resp = await self._client.chat.completions.create(**{k: v for k, v in _nb_body.items() if k != "stream"}, stream=False)
+                    for _nb_choice in (_nb_resp.choices or []):
+                        for _nb_tc in (getattr(_nb_choice.message, "tool_calls", None) or []):
+                            if _nb_tc.function and _nb_tc.function.name:
+                                _fallback_tool_args[_nb_tc.function.name] = _nb_tc.function.arguments or "{}"
+                except Exception:
+                    pass'''
+content = content.replace(old, new)
+with open(path, 'w') as f:
+    f.write(content)
+print("Done")
+EOF
+**4. Использование fallback при пустых args**
+python3 - << 'EOF'
+path = "/root/.local/share/uv/tools/free-claude-code/lib/python3.14/site-packages/providers/openai_compat.py"
+with open(path) as f:
+    content = f.read()
+old = '''                        for tc in delta.tool_calls:
+                            tc_info = {
+                                "index": tc.index,
+                                "id": tc.id,
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }'''
+new = '''                        for tc in delta.tool_calls:
+                            _args = tc.function.arguments
+                            if not _args or _args.strip() in ("{}", ""):
+                                _args = _fallback_tool_args.get(tc.function.name or "", "{}")
+                            tc_info = {
+                                "index": tc.index,
+                                "id": tc.id,
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": _args,
+                                },
+                            }'''
+content = content.replace(old, new)
+with open(path, 'w') as f:
+    f.write(content)
+print("Done")
+EOF
+**5. Перезапуск**
+systemctl restart fcc-server

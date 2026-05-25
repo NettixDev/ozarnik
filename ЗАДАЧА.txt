@@ -1,0 +1,17 @@
+Привет. На данный момент мы находимся в рабочей папке Codex
+
+Тебе нужно изменить:
+VsCode Extension
+CLI
+БЕЗ APP (если его исходники тут конечно есть)
+
+Что нужно поменять:
+Вырезать все авторизации с ChatGPT/OpenAI
+Сделать связанным с api onlysq
+
+КАК ДОЛЖНО РАБОТАТЬ ПРИЛОЖЕНИЕ:
+При первом входе у юзера запрашивает api ключ onlysq. После ввода он сохраняется куда нибудь в конфиг. После этого он просто попадает в codex и работает как обычно
+Что бы сменить модель ему нужно будет прописать /model, такая команда вроде уже есть просто модифицировать надо будет (если в cli, если в расширении то там щас скажу), парсинг моделей с https://api.onlysq.ru/ai/models
+Если extension то просто в списке ставим все модели с выше сказанного url. Вот пример как там выглядит одна модель
+{"api-version": "4.2.3", "models": {"zai-glm-4.6": {"name": "Zai Glm 4.6", "description": "Updated GLM model with enhanced tool-use and bilingual logic", "modality": "text", "can-tools": true, "can-stream": true, "can-think": true, "cost": 2.0, "status": "work", "owner": "<String>", "tier": 2, "limits": [0, 3, 10, 20]}, "llama3.1-8b": {"name": "Llama3.1 8B", "description": "Multilingual large language model optimized for dialogue use cases", "modality": "text", "can-tools": false, "can-stream": true, "can-think": false, "cost": 0.3, "status": "work", "owner": "<String>", "tier": 0, "limits": [10, 20, 40, 80]},....
+Думаю объяснил всё понятно.
